@@ -1,0 +1,104 @@
+function [epipar,obj] = density_optimize(smp, moment, mesh, coef, weight, pdfcond, prior, momentlist_np)
+% This function serves as an interface between Matlab and GAMS
+
+mat_moment=zeros(length(momentlist_np(:,1)),2*mesh.m);
+sorder=ceil(smp*mesh.m/(mesh.mend-mesh.m0));
+for i=1:length(momentlist_np(:,1))
+        mat_moment(i,1:mesh.m)=accumarray(sorder,coef(:,i)');
+        mat_moment(i,(mesh.m+1):end)=accumarray(sorder,(coef(:,i).*smp)');
+end
+C=diag(weight)*mat_moment;
+
+d=weight.*moment; %constant in objective
+
+mat_inte = [mesh.mlist(2:end)-mesh.mlist(1:end-1),(mesh.mlist(2:end).^2-mesh.mlist(1:end-1).^2)/2]; %integrate = 1
+
+mat_sparse = [diag(mat_inte(1:mesh.m)),diag(mat_inte(mesh.m+1:end))]; %minimize the jump of the obj func
+
+mat_cont = [[eye(mesh.m-1),zeros(mesh.m-1,1)]+[zeros(mesh.m-1,1),-eye(mesh.m-1)],[diag(mesh.mlist(2:mesh.m)),zeros(mesh.m-1,1)]+[zeros(mesh.m-1,1),-diag(mesh.mlist(2:mesh.m))]];
+%constraint for the jump
+
+mat_nonneg = [[eye(mesh.m), diag(mesh.mlist(1:mesh.m))];[zeros(1,mesh.m-1) eye(1) zeros(1,mesh.m-1) mesh.mlist(end)]];
+
+tail_size = mesh.m/2; %size enforce non-dec/non-inc 8
+
+mat_nondec = [zeros(tail_size,mesh.m), eye(tail_size), zeros(tail_size,mesh.m-tail_size)];
+
+mat_noninc = [zeros(tail_size,mesh.m), zeros(tail_size,mesh.m-tail_size), eye(tail_size)];
+
+mat_smooth = [zeros(mesh.m-1,mesh.m) eye(mesh.m-1) zeros(mesh.m-1,1)] + [zeros(mesh.m-1,mesh.m) zeros(mesh.m-1,1) -eye(mesh.m-1) ];
+
+
+Aeq = [mat_inte;mat_cont];
+% Aeq = [mat_inte];
+
+beq = [1;zeros(mesh.m-1,1)];
+% beq = [1];
+
+% A = [-mat_nonneg;-mat_nondec;mat_noninc];
+A=[-mat_nonneg;-mat_nondec;mat_noninc;mat_smooth;-mat_smooth];
+% b=[zeros(mesh.m+1,1);zeros(tail_size,1);zeros(tail_size,1)];
+b=[zeros(mesh.m+1,1);zeros(tail_size,1);zeros(tail_size,1);ones(mesh.m-1,1)*17000/mesh.m;ones(mesh.m-1,1)*17000/mesh.m];
+
+
+% define maximum entropy
+% prior=reshape(prior,mesh.m*size(prior,2),1);
+% max_entropy=@(x) sum(pdfcond.*(x(ceil(smp/((mesh.mend-mesh.m0)/mesh.m))+mesh.m).*smp+x(ceil(smp/((mesh.mend-mesh.m0)/mesh.m))))...
+%     .*log(1e-6+pdfcond.*(x(ceil(smp/((mesh.mend-mesh.m0)/mesh.m))+mesh.m).*smp+x(ceil(smp/((mesh.mend-mesh.m0)/mesh.m))))))...
+%     +(C*x-d)'*(C*x-d);
+
+
+% if nargin < 6
+
+options= optimoptions(@lsqlin,'Algorithm','active-set','MaxIter',100000);
+% 
+% [epipar,obj]=lsqlin(C,d,A,b,Aeq,beq,[],[],[],options);
+
+% ratio=((C*epipar-d)'*(C*epipar-d))./((mat_smooth*epipar)'*(mat_smooth*epipar))  
+% 
+% C1=[C;1/ratio*mat_smooth]; d1=[d;zeros(mesh.m-1,1)];
+%  C1=[C]; d1=[d];
+ C1=[C;0*mat_sparse]; d1=[d;zeros(mesh.m,1)];
+% 
+[epipar,obj]=lsqlin(C1,d1,A,b,Aeq,beq,[],[],[],options);
+
+% Ridge trace plot
+% for kkk=1:20
+% 
+% C1=[C;0.001*2^kkk*mat_sparse]; d1=[d;zeros(mesh.m,1)];
+% % 
+% [epipar,obj]=lsqlin(C1,d1,A,b,Aeq,beq,[],[],[],options);
+% 
+% plotepi(:,kkk)=epipar;
+% end
+
+%  else
+% %   
+
+% maximum entropy estimation
+%       options= optimoptions(@fmincon,'MaxFunEvals',300000);
+% 
+% 
+%       [epipar,obj]=fmincon(max_entropy,prior,A,b,Aeq,beq,[],[],[],options);
+      
+%       (C*epipar-d)'*(C*epipar-d)
+%       
+%       max_entropy(epipar)
+% % 
+%  end
+
+% Gurobi solver
+% model.Q = sparse(C'*C);
+% model.obj = -2*d'*C;
+% model.A = sparse([A;Aeq]);
+% model.rhs = [b;beq];
+% model.sense = [repmat('<',length(b),1);repmat('=',length(beq),1)];
+% 
+% results=gurobi(model);
+% 
+% epipar1=results.x;
+
+epipar=reshape(epipar,mesh.m,length(epipar)/mesh.m);
+
+
+end
