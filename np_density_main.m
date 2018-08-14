@@ -5,7 +5,7 @@ num_dim_x = 4;
 %------generate y obs data-----------------------------------------------------------
 num_obs = 2500;
 num_sample_t=size(flow_normal_total,1)/num_obs;
-num_dim_y_np = 10; % 6 components for np estimation
+num_dim_y_np = size(y_indices,2); % 6 components for np estimation
 obs_pool_y_old_np=flow_normal_total(1:num_obs*num_sample_t,y_indices);
 obs_total_y_old_np=cell(num_sample_t,1);
 for i=1:num_sample_t
@@ -19,7 +19,7 @@ end
 % obs_y_np = obs_pool_y;
 %-------------------------------------------------------------------------------------
 % generate moments
-num_moment = 5;
+num_moment = 8;
 momentlist_full=zeros(1,num_moment);
 for i=1:num_moment
 momentlist_temp=nmultichoosek(1:num_dim_y_np,i);
@@ -43,9 +43,6 @@ for i=1:size(momentlist_np,1)
     moment_obs_y_np(i,iteri)=mean(prod(obs_y_np.^repmat(momentlist_np(i,:),[num_obs,1]),2));
 end
 end
-%---------------------------------------------------------------------------------
-% density_mesh;
-load('mesh.mat');
 %---------------------------------------------------------------------------------
 % generate sampled y moment with known pdf
 num = 10000;
@@ -88,15 +85,15 @@ for iteri = 1:num_dim_x
 end
 pdf_old=1/(mesh.mend-mesh.m0)^num_dim_x;
 coeffs = cell(num_sample_t,1);
-for sp = 1:5%num_sample_t
+for sp = 1:8%num_sample_t
     sp
     % decomposition algorithm
 %     moment_y=moment_pdfsmp_y_np(:,sp);
 %     pd = makedist('Normal');
 %     t = truncate(pd,0,2);
 %     moment_y = random(t,size(moment_obs_y_np,1),1);
-% binornd(1, 0.5, 3003,1);
-    moment_y = moment_pdfsmp_y_np(:,sp);%.*random(t,size(moment_obs_y_np,1),1);
+%     binornd(1, 0.5, 3003,1);
+    moment_y = moment_obs_y_np(:,sp);%.*random(t,size(moment_obs_y_np,1),1);
 %     maxi = find(moment_y == max(moment_y));
 %     moment_y(1717) = 10^8;
     num_itermain = 1000;
@@ -112,7 +109,12 @@ for sp = 1:5%num_sample_t
     coeffs{sp,1} = epipar_iteri;
 end
 % plotting density for the last sample
-density_draw(coeffs{2,1}, mesh, 'green')
+color = {'black', 'green', 'magenta', 'k', 'blue', 'red', 'cyan', 'yellow'};
+% cmap = colormap(parula(10));
+hold on
+for i = 1:8
+    density_draw(coeffs{i,1}, mesh, color{1,i})
+end
 mat = [smp_x_subs(:,1),pdfx(:,1)];
 mat = sortrows(mat, 1);
 plot(mat(:,1),mat(:,2),'-r')
