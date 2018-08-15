@@ -19,7 +19,7 @@ end
 % obs_y_np = obs_pool_y;
 %-------------------------------------------------------------------------------------
 % generate moments
-num_moment = 8;
+num_moment = 6;
 momentlist_full=zeros(1,num_moment);
 for i=1:num_moment
 momentlist_temp=nmultichoosek(1:num_dim_y_np,i);

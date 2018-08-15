@@ -1,8 +1,7 @@
-%clear
+clear
 load('ninenodes_integrate_naive.mat')
 load('ninenodes_flownormal.mat')
-% density_mesh;
-load('mesh.mat');
+load('mesh.mat')
 mean_x_true = mean(smp_x_old);
 mean_y_true = mean(smp_y_old);
 x_threshold=0;
@@ -24,8 +23,8 @@ gmm_record=cell(9,1);
 omega_record=cell(9,1);
 %-----------------------------------------------------------------------------
 % PCA 
-%y_indices = [1,2,3,4,5,7,9,12,13,14];
-y_indices = [1,2,3,4,5,7,9];
+y_indices = [1,2,3,4,5,7,9,12,13,14];
+%y_indices = [1,5,7,9,12,4,13];
 obs_pool_y_old=flow_normal_total(1:num_obs*num_sample_t,y_indices);
 [zscore_obs, mu_obs, sigma_obs] = zscore(obs_pool_y_old);
 [coeff_pca,obs_pool_y_pca, evs] = princomp(zscore_obs);
